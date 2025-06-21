@@ -52,6 +52,33 @@ DIMENSION = 512
 async def startup_event():
     try:
         print("🚀 Starting Halo Face Search API...")
+        
+        # Pre-load DeepFace model for better performance
+        print("⚡ Pre-loading ArcFace model...")
+        import tempfile
+        import numpy as np
+        from PIL import Image
+        
+        # Create a dummy image to warm up DeepFace
+        dummy_img = Image.new('RGB', (224, 224), color='white')
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            dummy_img.save(tmp.name)
+            try:
+                DeepFace.represent(
+                    img_path=tmp.name,
+                    model_name="ArcFace",
+                    detector_backend="opencv",
+                    enforce_detection=False
+                )
+                print("✅ ArcFace model pre-loaded successfully!")
+            except:
+                print("⚠️  Model pre-loading failed, will load on first request")
+            finally:
+                import os
+                if os.path.exists(tmp.name):
+                    os.unlink(tmp.name)
+        
+        # Initialize Milvus
         if not milvus_client.has_collection(COLLECTION_NAME):
             schema = CollectionSchema([
                 FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
@@ -76,7 +103,7 @@ async def startup_event():
         milvus_client.load_collection(COLLECTION_NAME)
         stats = milvus_client.get_collection_stats(COLLECTION_NAME)
         print(f"📊 Database contains {stats.get('row_count', 0)} face embeddings")
-        print("�� Halo Face Search API ready!")
+        print("🎯 Halo Face Search API ready!")
         
     except Exception as e:
         print(f"❌ Error initializing: {e}")
@@ -148,8 +175,6 @@ async def search_faces(file: UploadFile = File(...), top_k: int = 5):
         search_results = milvus_client.search(
             collection_name=COLLECTION_NAME,
             data=[query_embedding.tolist()],
-            anns_field="embedding", 
-            param={"metric_type": "COSINE", "params": {"ef": 64}},
             limit=top_k,
             output_fields=["face_id", "image_path", "person_name"]
         )
@@ -170,6 +195,10 @@ async def search_faces(file: UploadFile = File(...), top_k: int = 5):
             "query": {"filename": file.filename, "results_found": len(results)},
             "results": results
         }
+        
+    except Exception as e:
+        print(f"❌ Search error: {e}")  # Debug logging
+        raise HTTPException(status_code=500, detail=f"Face search failed: {str(e)}")
         
     finally:
         if os.path.exists(tmp_file_path):
