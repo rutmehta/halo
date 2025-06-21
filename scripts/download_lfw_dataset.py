@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Download and organize LFW (Labeled Faces in the Wild) dataset
-Real face dataset for building production face recognition system
+Download LFW (Labeled Faces in the Wild) dataset
+Real face dataset for production face recognition system
 """
 
 import os
@@ -10,100 +10,88 @@ import tarfile
 import shutil
 from tqdm import tqdm
 import json
+import subprocess
 
 def download_lfw_dataset(data_dir='data'):
-    """
-    Download LFW dataset - 13,233 images of 5,749 people
-    Perfect for real face recognition testing
-    """
+    """Download LFW dataset - 13,233 images of 5,749 people"""
     
     print("🔥 Downloading LFW Dataset for Halo Face Search")
-    print("📊 Dataset info: 13,233 images from 5,749 people")
-    print("🎯 Real faces for production-quality face recognition\n")
+    print("📊 Dataset: 13,233 images from 5,749 real people")
+    print("🎯 Perfect for production face recognition testing\n")
     
     # Create directories
     os.makedirs(data_dir, exist_ok=True)
     lfw_dir = os.path.join(data_dir, 'lfw_faces')
     os.makedirs(lfw_dir, exist_ok=True)
     
-    # LFW dataset URL
+    # LFW dataset URL (official mirror)
     lfw_url = "http://vis-www.cs.umass.edu/lfw/lfw.tgz"
-    tar_path = os.path.join(data_dir, 'lfw.tgz')
+    lfw_tar_path = os.path.join(data_dir, 'lfw.tgz')
     
-    # Download if not exists
-    if not os.path.exists(tar_path):
-        print(f"📥 Downloading LFW dataset (173MB)...")
+    try:
+        # Download LFW dataset
+        print(f"📥 Downloading LFW dataset from: {lfw_url}")
+        print("⏳ This may take a few minutes (145MB download)...")
         
         response = requests.get(lfw_url, stream=True)
+        response.raise_for_status()
+        
         total_size = int(response.headers.get('content-length', 0))
         
-        with open(tar_path, 'wb') as f:
-            with tqdm(total=total_size, unit='B', unit_scale=True, desc="Downloading") as pbar:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        pbar.update(len(chunk))
+        with open(lfw_tar_path, 'wb') as f, tqdm(
+            desc="Downloading",
+            total=total_size,
+            unit='B',
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as pbar:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    pbar.update(len(chunk))
         
-        print("✅ Download completed!")
-    else:
-        print("✅ LFW dataset already downloaded")
-    
-    # Extract if not already extracted
-    extracted_dir = os.path.join(data_dir, 'lfw')
-    if not os.path.exists(extracted_dir):
-        print("📂 Extracting dataset...")
+        print(f"✅ Downloaded LFW dataset: {lfw_tar_path}")
         
-        with tarfile.open(tar_path, 'r:gz') as tar:
+        # Extract the dataset
+        print("📦 Extracting LFW dataset...")
+        with tarfile.open(lfw_tar_path, 'r:gz') as tar:
             tar.extractall(data_dir)
         
-        print("✅ Extraction completed!")
-    else:
-        print("✅ Dataset already extracted")
-    
-    # Organize faces for easier processing
-    organize_faces(extracted_dir, lfw_dir)
-    
-    # Create metadata
-    create_metadata(lfw_dir)
-    
-    print(f"\n🎯 LFW dataset ready at: {lfw_dir}")
-    return lfw_dir
-
-def organize_faces(source_dir, target_dir):
-    """Organize faces into a flat structure for easier processing"""
-    
-    print("🗂️  Organizing faces...")
-    
-    face_count = 0
-    person_count = 0
-    
-    # Walk through person directories
-    for person_name in os.listdir(source_dir):
-        person_path = os.path.join(source_dir, person_name)
-        
-        if not os.path.isdir(person_path):
-            continue
+        # Move extracted files to proper location
+        extracted_lfw = os.path.join(data_dir, 'lfw')
+        if os.path.exists(extracted_lfw):
+            print("📁 Organizing LFW faces...")
             
-        person_count += 1
-        
-        # Copy all images for this person
-        for image_file in os.listdir(person_path):
-            if image_file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                source_image = os.path.join(person_path, image_file)
-                
-                # Create unique filename: personname_imagename.jpg
-                new_filename = f"{person_name}_{image_file}"
-                target_image = os.path.join(target_dir, new_filename)
-                
-                if not os.path.exists(target_image):
-                    shutil.copy2(source_image, target_image)
-                
-                face_count += 1
-        
-        if person_count % 100 == 0:
-            print(f"   Processed {person_count} people, {face_count} faces...")
-    
-    print(f"✅ Organized {face_count} faces from {person_count} people")
+            # Count and organize faces
+            face_count = 0
+            for person_dir in os.listdir(extracted_lfw):
+                person_path = os.path.join(extracted_lfw, person_dir)
+                if os.path.isdir(person_path):
+                    for face_file in os.listdir(person_path):
+                        if face_file.lower().endswith(('.jpg', '.jpeg')):
+                            # Copy to flat structure for easier processing
+                            src = os.path.join(person_path, face_file)
+                            # Create unique filename: person_image.jpg
+                            dst_name = f"{person_dir}_{face_file}"
+                            dst = os.path.join(lfw_dir, dst_name)
+                            shutil.copy2(src, dst)
+                            face_count += 1
+            
+            print(f"✅ Organized {face_count} LFW faces in {lfw_dir}")
+            
+            # Clean up
+            shutil.rmtree(extracted_lfw)
+            os.remove(lfw_tar_path)
+            
+            print("🎉 LFW dataset ready for face recognition!")
+            print(f"📊 Total faces available: {len(os.listdir(os.path.join(data_dir, 'synthetic_faces')))} synthetic + {face_count} real")
+            
+            return True
+            
+    except Exception as e:
+        print(f"❌ Error downloading LFW dataset: {e}")
+        print("💡 Alternative: Using synthetic faces only")
+        return False
 
 def create_metadata(lfw_dir):
     """Create metadata file with dataset information"""
@@ -181,12 +169,11 @@ def sample_faces_for_demo(lfw_dir, sample_dir='data/sample_faces', max_faces=100
     
     return sample_dir
 
-if __name__ == '__main__':
-    # Download and organize LFW dataset
-    lfw_dir = download_lfw_dataset()
+if __name__ == "__main__":
+    download_lfw_dataset()
     
     # Create sample for demo (1000 faces)
-    sample_dir = sample_faces_for_demo(lfw_dir, max_faces=1000)
+    sample_dir = sample_faces_for_demo(max_faces=1000)
     
     print("\n🎯 Ready for next step: Generate embeddings!")
     print("Run: python scripts/generate_embeddings.py") 
