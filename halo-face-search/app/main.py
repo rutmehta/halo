@@ -32,6 +32,18 @@ app.add_middleware(
 )
 
 MILVUS_URI = os.getenv("MILVUS_URI", "http://localhost:19530")
+
+# For Railway deployment, use Milvus Lite (embedded database)
+# For local development, use full Milvus server
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    # Railway deployment - use Milvus Lite
+    MILVUS_URI = "./milvus_face_search.db"
+    print("🚂 Railway deployment detected - using Milvus Lite")
+else:
+    # Local development - use full Milvus server
+    MILVUS_URI = os.getenv("MILVUS_URI", "http://localhost:19530")
+    print("🏠 Local development - using Milvus server")
+
 milvus_client = MilvusClient(uri=MILVUS_URI)
 COLLECTION_NAME = "face_embeddings"
 DIMENSION = 512
