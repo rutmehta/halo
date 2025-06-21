@@ -6,10 +6,9 @@ python-multipart==0.0.6
 # Face recognition and processing
 deepface==0.0.79
 opencv-python==4.8.1.78
-tensorflow==2.13.0
 
 # Vector database
-pymilvus==2.3.3
+pymilvus==2.5.11
 
 # Data processing
 numpy==1.24.3
@@ -29,11 +28,12 @@ httpx==0.25.2
 pytest==7.4.3
 pytest-asyncio==0.21.1
 
-# StyleGAN dependencies (for face generation)
+# StyleGAN dependencies (for face generation)  
 torch==2.1.1
 torchvision==0.16.1
 
 # Utilities
-python-dotenv==1.0.0
+python-dotenv==1.0.1
 pydantic==2.5.2 
-requests==2.31.0 
+requests==2.31.0
+typing-extensions>=4.8.0 
