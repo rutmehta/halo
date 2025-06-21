@@ -206,4 +206,4 @@ docker-compose restart milvus
 
 ## License
 
-This project is developed as a technical demonstration for the Halo internship program. 
+This project is developed as a technical demonstration for the Halo internship program. # Railway deployment with Milvus Lite
