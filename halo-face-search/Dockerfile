@@ -41,4 +41,4 @@ COPY ./data /app/data
 # The command to run the application using Uvicorn
 # We will run a single worker here and scale using container orchestration (or more workers in docker-compose)
 # The host 0.0.0.0 makes the server accessible from outside the container.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"] 
